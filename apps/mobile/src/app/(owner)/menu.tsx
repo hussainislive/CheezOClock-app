@@ -270,21 +270,37 @@ export default function OwnerMenuScreen() {
                       <Text style={styles.itemName}>{item.name}</Text>
                       <Text style={styles.itemPrice}>${item.price}</Text>
                     </View>
-                    <View style={styles.availabilityRow}>
-                      <Text style={styles.availabilityLabel}>
-                        {isAvailable ? 'Available' : 'Unavailable'}
-                      </Text>
-                      <Switch
-                        value={isAvailable}
-                        onValueChange={(value) =>
-                          toggleAvailability({
-                            id: item.id,
-                            isAvailable: value,
-                          })
-                        }
-                        trackColor={{ false: '#FECACA', true: '#86EFAC' }}
-                        thumbColor={isAvailable ? '#22C55E' : '#EF4444'}
-                      />
+                    <View style={styles.itemActions}>
+                      <View style={styles.availabilityRow}>
+                        <Text style={styles.availabilityLabel}>
+                          {isAvailable ? 'Available' : 'Unavailable'}
+                        </Text>
+                        <Switch
+                          value={isAvailable}
+                          onValueChange={(value) =>
+                            toggleAvailability({
+                              id: item.id,
+                              isAvailable: value,
+                            })
+                          }
+                          trackColor={{ false: '#FECACA', true: '#86EFAC' }}
+                          thumbColor={isAvailable ? '#22C55E' : '#EF4444'}
+                        />
+                      </View>
+                      <Pressable
+                        onPress={() => {
+                          Alert.alert('Delete item?', item.name, [
+                            { text: 'Cancel', style: 'cancel' },
+                            {
+                              text: 'Delete',
+                              style: 'destructive',
+                              onPress: () => deleteItem(item.id),
+                            },
+                          ]);
+                        }}
+                      >
+                        <Text style={styles.deleteText}>Delete</Text>
+                      </Pressable>
                     </View>
                   </View>
                 );
@@ -476,6 +492,11 @@ const styles = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: 8,
+  },
+  itemActions: {
+    alignItems: 'flex-end',
+    gap: 4,
+    flexShrink: 0,
   },
   itemInfo: {
     flex: 1,
