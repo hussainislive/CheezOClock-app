@@ -39,3 +39,23 @@ export interface RestaurantType {
   createdAt: Date;
   updatedAt: Date;
 }
+
+export interface MenuCategory {
+  id: string;
+  restaurantId: string;
+  name: string;
+  createdAt: Date;
+}
+
+export interface MenuItem {
+  id: string;
+  categoryId: string;
+  restaurantId: string;
+  name: string;
+  description: string | null;
+  price: string;
+  imageUrl: string | null;
+  isAvailable: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+}
