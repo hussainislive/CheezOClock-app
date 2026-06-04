@@ -65,3 +65,47 @@ export interface RestaurantWithMenu {
   categories: MenuCategory[];
   items: MenuItem[];
 }
+
+export const OrderStatus = {
+  PENDING: 'PENDING',
+  CONFIRMED: 'CONFIRMED',
+  PREPARING: 'PREPARING',
+  READY: 'READY',
+  PICKED_UP: 'PICKED_UP',
+  DELIVERED: 'DELIVERED',
+  CANCELLED: 'CANCELLED',
+} as const;
+
+export type OrderStatus = typeof OrderStatus[keyof typeof OrderStatus];
+
+export interface CartItem {
+  id: string;          // menuItem id
+  name: string;
+  price: string;
+  imageUrl: string | null;
+  restaurantId: string;
+  restaurantName: string;
+  quantity: number;
+}
+
+export interface Order {
+  id: string;
+  customerId: string;
+  restaurantId: string;
+  driverId: string | null;
+  status: OrderStatus;
+  totalAmount: string;
+  deliveryAddress: string;
+  stripePaymentIntentId: string | null;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface OrderItem {
+  id: string;
+  orderId: string;
+  menuItemId: string;
+  quantity: string;
+  unitPrice: string;
+  createdAt: Date;
+}

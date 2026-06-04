@@ -5,6 +5,7 @@ export default function CustomerHomeLayout() {
     <Stack screenOptions={{ headerShown: false }}>
       <Stack.Screen name="index" />
       <Stack.Screen name="restaurant/[id]" />
+      <Stack.Screen name="order/[id]" />
     </Stack>
   );
 }
