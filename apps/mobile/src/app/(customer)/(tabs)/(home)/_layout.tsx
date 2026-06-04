@@ -4,8 +4,14 @@ export default function CustomerHomeLayout() {
   return (
     <Stack screenOptions={{ headerShown: false }}>
       <Stack.Screen name="index" />
-      <Stack.Screen name="restaurant/[id]" />
-      <Stack.Screen name="order/[id]" />
+      <Stack.Screen
+        name="restaurant/[id]"
+        options={{
+          headerShown: true,
+          title: 'Menu',
+          headerBackTitle: 'Back',
+        }}
+      />
     </Stack>
   );
 }
