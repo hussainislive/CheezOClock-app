@@ -10,10 +10,14 @@ import { NeonHttpDatabase } from 'drizzle-orm/neon-http';
 import * as schema from '../db/schema';
 import { OrderStatus, UserRole } from '@food-delivery/types';
 import { CreateOrderDto } from './dto/create-order.dto';
+import { OrdersGateway } from '../gateway/orders.gateway';
 
 @Injectable()
 export class OrdersService {
-  constructor(@Inject('DB') private db: NeonHttpDatabase<typeof schema>) {}
+  constructor(
+    @Inject('DB') private db: NeonHttpDatabase<typeof schema>,
+    private ordersGateway: OrdersGateway,
+  ) {}
 
   async create(customerId: string, dto: CreateOrderDto) {
     const menuItemIds = dto.items.map((i) => i.menuItemId);
@@ -160,6 +164,8 @@ export class OrdersService {
       .set({ status: newStatus, updatedAt: new Date() })
       .where(eq(schema.orders.id, orderId))
       .returning();
+
+    this.ordersGateway.emitOrderUpdate(updated);
 
     return updated;
   }

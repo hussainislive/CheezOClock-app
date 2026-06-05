@@ -8,12 +8,16 @@ import { eq } from 'drizzle-orm';
 import { NeonHttpDatabase } from 'drizzle-orm/neon-http';
 import Stripe from 'stripe';
 import * as schema from '../db/schema';
+import { OrdersGateway } from '../gateway/orders.gateway';
 
 @Injectable()
 export class PaymentsService {
   private stripe: InstanceType<typeof Stripe>;
 
-  constructor(@Inject('DB') private db: NeonHttpDatabase<typeof schema>) {
+  constructor(
+    @Inject('DB') private db: NeonHttpDatabase<typeof schema>,
+    private ordersGateway: OrdersGateway,
+  ) {
     // initialise Stripe with the secret key
     this.stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
   }
@@ -82,10 +86,13 @@ export class PaymentsService {
       // idempotency check — skip if already confirmed (Stripe can resend webhooks)
       if (order.status === 'CONFIRMED') return { received: true };
 
-      await this.db
+      const [updated] = await this.db
         .update(schema.orders)
         .set({ status: 'CONFIRMED', updatedAt: new Date() })
-        .where(eq(schema.orders.id, order.id));
+        .where(eq(schema.orders.id, order.id))
+        .returning();
+
+      this.ordersGateway.emitOrderUpdate(updated);
     }
 
     return { received: true }; // always return 200 to Stripe

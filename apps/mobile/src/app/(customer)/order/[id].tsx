@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -9,11 +9,12 @@ import {
   View,
 } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useStripe } from '@stripe/stripe-react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { api } from '@/lib/axios';
 import { Order } from '@food-delivery/types';
+import { useOrderSocket } from '@/hooks/use-order-socket';
 
 const STATUS_STEPS = [
   { key: 'CONFIRMED', label: 'Order Confirmed', icon: '✅' },
@@ -33,8 +34,21 @@ const STATUS_ORDER = [
 
 export default function OrderConfirmationScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
+  const queryClient = useQueryClient();
+  const orderUpdate = useOrderSocket(id ?? null);
   const { initPaymentSheet, presentPaymentSheet } = useStripe();
   const [paymentLoading, setPaymentLoading] = useState(false);
+
+  useEffect(() => {
+    if (orderUpdate) {
+      // update React Query cache directly — no new HTTP request needed
+      // ['order', id] must match the queryKey in useQuery above
+      queryClient.setQueryData(['order', id], (old: unknown) => ({
+        ...(old as object), // keep existing fields (items, address, totalAmount)
+        ...orderUpdate, // overwrite with pushed data (mainly status)
+      }));
+    }
+  }, [orderUpdate, id, queryClient]);
 
   const {
     data: order,
@@ -45,10 +59,6 @@ export default function OrderConfirmationScreen() {
     queryFn: () =>
       api.get<Order & { items: any[] }>(`/orders/${id}`).then((r) => r.data),
     enabled: !!id,
-    refetchInterval: (query) => {
-      const status = query.state.data?.status;
-      return status === 'DELIVERED' || status === 'CANCELLED' ? false : 10000;
-    },
   });
 
   async function handlePayment() {
