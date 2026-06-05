@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ForbiddenException,
   Inject,
   Injectable,
   NotFoundException,
@@ -7,7 +8,7 @@ import {
 import { eq, inArray } from 'drizzle-orm';
 import { NeonHttpDatabase } from 'drizzle-orm/neon-http';
 import * as schema from '../db/schema';
-import { UserRole } from '@food-delivery/types';
+import { OrderStatus, UserRole } from '@food-delivery/types';
 import { CreateOrderDto } from './dto/create-order.dto';
 
 @Injectable()
@@ -107,6 +108,89 @@ export class OrdersService {
       .where(eq(schema.orderItems.orderId, id));
 
     return { ...order, items };
+  }
+
+  async findByRestaurant(ownerId: string) {
+    const [restaurant] = await this.db
+      .select()
+      .from(schema.restaurants)
+      .where(eq(schema.restaurants.ownerId, ownerId));
+
+    if (!restaurant) throw new NotFoundException('Restaurant not found');
+
+    return this.db
+      .select()
+      .from(schema.orders)
+      .where(eq(schema.orders.restaurantId, restaurant.id));
+  }
+
+  async updateStatus(
+    orderId: string,
+    newStatus: OrderStatus,
+    user: { sub: string; role: string },
+  ) {
+    const [order] = await this.db
+      .select()
+      .from(schema.orders)
+      .where(eq(schema.orders.id, orderId));
+
+    if (!order) throw new NotFoundException('Order not found');
+
+    this.validateTransition(order.status, newStatus, user.role);
+
+    if (user.role === UserRole.RESTAURANT_OWNER) {
+      const [restaurant] = await this.db
+        .select()
+        .from(schema.restaurants)
+        .where(eq(schema.restaurants.ownerId, user.sub));
+
+      if (!restaurant || restaurant.id !== order.restaurantId) {
+        throw new ForbiddenException(
+          'This order does not belong to your restaurant',
+        );
+      }
+    }
+
+    if (user.role === UserRole.DRIVER && order.driverId !== user.sub) {
+      throw new ForbiddenException('This order is not assigned to you');
+    }
+
+    const [updated] = await this.db
+      .update(schema.orders)
+      .set({ status: newStatus, updatedAt: new Date() })
+      .where(eq(schema.orders.id, orderId))
+      .returning();
+
+    return updated;
+  }
+
+  private validateTransition(
+    currentStatus: string,
+    newStatus: string,
+    role: string,
+  ) {
+    const ownerTransitions: Record<string, string[]> = {
+      CONFIRMED: ['PREPARING', 'CANCELLED'],
+      PREPARING: ['READY', 'CANCELLED'],
+    };
+
+    const driverTransitions: Record<string, string[]> = {
+      READY: ['PICKED_UP'],
+      PICKED_UP: ['DELIVERED'],
+    };
+
+    const allowed =
+      role === UserRole.RESTAURANT_OWNER
+        ? (ownerTransitions[currentStatus] ?? [])
+        : role === UserRole.DRIVER
+          ? (driverTransitions[currentStatus] ?? [])
+          : [];
+
+    if (!allowed.includes(newStatus)) {
+      throw new BadRequestException(
+        `Cannot transition from ${currentStatus} to ${newStatus}`,
+      );
+    }
   }
 
   private async isOwnerOfRestaurant(ownerId: string, restaurantId: string) {
