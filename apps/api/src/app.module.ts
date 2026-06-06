@@ -10,6 +10,7 @@ import { OrdersModule } from './orders/orders.module';
 import { PaymentsModule } from './payments/payments.module';
 import { GatewayModule } from './gateway/gateway.module';
 import { DriverModule } from './driver/driver.module';
+import { LocationModule } from './location/location.module';
 
 @Module({
   imports: [
@@ -22,6 +23,7 @@ import { DriverModule } from './driver/driver.module';
     PaymentsModule,
     GatewayModule,
     DriverModule,
+    LocationModule,
   ],
   controllers: [AppController],
   providers: [AppService],

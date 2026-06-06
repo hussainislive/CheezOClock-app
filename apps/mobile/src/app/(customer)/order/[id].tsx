@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
 import {
   ActivityIndicator,
   Alert,
@@ -7,6 +8,7 @@ import {
   StyleSheet,
   Text,
   View,
+  Platform,
 } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -14,7 +16,10 @@ import { useStripe } from '@stripe/stripe-react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { api } from '@/lib/axios';
 import { Order } from '@food-delivery/types';
-import { useOrderSocket } from '@/hooks/use-order-socket';
+import {
+  useOrderSocket,
+  useDriverLocationSocket,
+} from '@/hooks/use-order-socket';
 
 const STATUS_STEPS = [
   { key: 'CONFIRMED', label: 'Order Confirmed', icon: '✅' },
@@ -39,6 +44,11 @@ export default function OrderConfirmationScreen() {
   const { initPaymentSheet, presentPaymentSheet } = useStripe();
   const [paymentLoading, setPaymentLoading] = useState(false);
 
+  const [cachedDriverLocation, setCachedDriverLocation] = useState<{
+    latitude: number;
+    longitude: number;
+  } | null>(null);
+
   useEffect(() => {
     if (orderUpdate) {
       // update React Query cache directly — no new HTTP request needed
@@ -60,6 +70,25 @@ export default function OrderConfirmationScreen() {
       api.get<Order & { items: any[] }>(`/orders/${id}`).then((r) => r.data),
     enabled: !!id,
   });
+
+  const liveDriverLocation = useDriverLocationSocket(
+    order?.status === 'PICKED_UP' ? (id ?? null) : null,
+  );
+
+  // hydrate from Redis when customer opens screen mid-delivery
+  useEffect(() => {
+    if (!id || !order?.driverId || order?.status !== 'PICKED_UP') return;
+
+    api
+      .get<{ latitude: number; longitude: number } | null>(`/location/${id}`)
+      .then((r) => {
+        if (r.data) setCachedDriverLocation(r.data);
+      })
+      .catch(() => {});
+  }, [id, order?.driverId, order?.status]);
+
+  const driverLocation = liveDriverLocation ?? cachedDriverLocation;
+  const showMap = !!driverLocation && order?.status === 'PICKED_UP';
 
   async function handlePayment() {
     if (!order) return;
@@ -186,6 +215,27 @@ export default function OrderConfirmationScreen() {
                 </Text>
               )}
             </Pressable>
+          )}
+
+          {showMap && (
+            <MapView
+              style={styles.map}
+              provider={Platform.OS === 'android' ? PROVIDER_GOOGLE : undefined}
+              region={{
+                latitude: driverLocation.latitude,
+                longitude: driverLocation.longitude,
+                latitudeDelta: 0.01,
+                longitudeDelta: 0.01,
+              }}
+            >
+              <Marker
+                coordinate={driverLocation}
+                title="Your driver"
+                description="On the way to you"
+              >
+                <Text style={styles.driverPin}>🛵</Text>
+              </Marker>
+            </MapView>
           )}
 
           {order?.status === 'CANCELLED' ? (
@@ -398,5 +448,15 @@ const styles = StyleSheet.create({
   stepLabelCompleted: {
     color: '#333',
     fontWeight: '500',
+  },
+  map: {
+    width: '100%',
+    height: 220,
+    borderRadius: 16,
+    marginBottom: 24,
+    overflow: 'hidden',
+  },
+  driverPin: {
+    fontSize: 28,
   },
 });

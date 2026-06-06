@@ -8,12 +8,22 @@ import {
   WebSocketServer,
 } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
+import { LocationService } from '../location/location.service';
+
+export interface DriverLocation {
+  driverId: string;
+  orderId: string;
+  latitude: number;
+  longitude: number;
+}
 
 @WebSocketGateway({
   cors: { origin: '*' },
   namespace: '/orders',
 })
 export class OrdersGateway implements OnGatewayConnection, OnGatewayDisconnect {
+  constructor(private locationService: LocationService) {}
+
   @WebSocketServer()
   server!: Server;
 
@@ -54,6 +64,24 @@ export class OrdersGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
   emitDriverAssigned(driverId: string, order: Record<string, unknown>) {
     this.server.to(`driver:${driverId}`).emit('driver:assigned', order);
+  }
+
+  @SubscribeMessage('driver:location')
+  async handleDriverLocation(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() location: DriverLocation,
+  ) {
+    // persist so late-joining customers see current position
+    await this.locationService.saveDriverLocation(
+      location.orderId,
+      location.latitude,
+      location.longitude,
+    );
+
+    // forward to everyone in order:<orderId> room (customer tracking screen)
+    this.server
+      .to(`order:${location.orderId}`)
+      .emit('driver:location', location);
   }
 
   emitOrderUpdate(order: {
