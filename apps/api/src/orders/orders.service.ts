@@ -5,7 +5,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { eq, inArray } from 'drizzle-orm';
+import { desc, eq, inArray, SQL } from 'drizzle-orm';
 import { NeonHttpDatabase } from 'drizzle-orm/neon-http';
 import * as schema from '../db/schema';
 import { OrderStatus, UserRole } from '@food-delivery/types';
@@ -84,10 +84,19 @@ export class OrdersService {
   }
 
   async findByCustomer(customerId: string) {
-    return this.db
-      .select()
-      .from(schema.orders)
-      .where(eq(schema.orders.customerId, customerId));
+    return this.findOrdersWithDetails(eq(schema.orders.customerId, customerId));
+  }
+
+  async findByDriver(driverId: string) {
+    return this.findOrdersWithDetails(eq(schema.orders.driverId, driverId));
+  }
+
+  // routes to customer or driver query based on JWT role
+  async findMyOrders(userId: string, role: string) {
+    if (role === UserRole.DRIVER) {
+      return this.findByDriver(userId);
+    }
+    return this.findByCustomer(userId);
   }
 
   async findById(id: string, user: { sub: string; role: string }) {
@@ -124,10 +133,9 @@ export class OrdersService {
 
     if (!restaurant) throw new NotFoundException('Restaurant not found');
 
-    return this.db
-      .select()
-      .from(schema.orders)
-      .where(eq(schema.orders.restaurantId, restaurant.id));
+    return this.findOrdersWithDetails(
+      eq(schema.orders.restaurantId, restaurant.id),
+    );
   }
 
   async updateStatus(
@@ -213,5 +221,44 @@ export class OrdersService {
       .where(eq(schema.restaurants.ownerId, ownerId));
 
     return restaurant?.id === restaurantId;
+  }
+
+  private async enrichOrders(orderRows: (typeof schema.orders.$inferSelect)[]) {
+    if (orderRows.length === 0) return [];
+
+    const orderIds = orderRows.map((o) => o.id);
+    const restaurantIds = [...new Set(orderRows.map((o) => o.restaurantId))];
+
+    const restaurants = await this.db
+      .select({
+        id: schema.restaurants.id,
+        name: schema.restaurants.name,
+      })
+      .from(schema.restaurants)
+      .where(inArray(schema.restaurants.id, restaurantIds));
+
+    const items = await this.db
+      .select()
+      .from(schema.orderItems)
+      .where(inArray(schema.orderItems.orderId, orderIds));
+
+    const restaurantMap = Object.fromEntries(restaurants.map((r) => [r.id, r]));
+
+    return orderRows.map((order) => ({
+      ...order,
+      restaurant: restaurantMap[order.restaurantId],
+      items: items.filter((i) => i.orderId === order.id),
+    }));
+  }
+
+  // shared fetch: filter orders, sort newest first, enrich with relations
+  private async findOrdersWithDetails(where: SQL) {
+    const orderRows = await this.db
+      .select()
+      .from(schema.orders)
+      .where(where)
+      .orderBy(desc(schema.orders.createdAt));
+
+    return this.enrichOrders(orderRows);
   }
 }

@@ -33,9 +33,9 @@ export class OrdersController {
 
   @Get('mine')
   @UseGuards(RolesGuard)
-  @Roles(UserRole.CUSTOMER)
+  @Roles(UserRole.CUSTOMER, UserRole.DRIVER)
   findMine(@Request() req: AuthRequest) {
-    return this.ordersService.findByCustomer(req.user.sub);
+    return this.ordersService.findMyOrders(req.user.sub, req.user.role);
   }
 
   @Get('restaurant')
