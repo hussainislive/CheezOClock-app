@@ -11,7 +11,7 @@ import {
   Platform,
 } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
 import { useStripe } from '@stripe/stripe-react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { api } from '@/lib/axios';
@@ -20,6 +20,7 @@ import {
   useOrderSocket,
   useDriverLocationSocket,
 } from '@/hooks/use-order-socket';
+import { RatingModal } from '@/components/rating-modal';
 
 const STATUS_STEPS = [
   { key: 'CONFIRMED', label: 'Order Confirmed', icon: '✅' },
@@ -43,6 +44,8 @@ export default function OrderConfirmationScreen() {
   const orderUpdate = useOrderSocket(id ?? null);
   const { initPaymentSheet, presentPaymentSheet } = useStripe();
   const [paymentLoading, setPaymentLoading] = useState(false);
+  const [showRatingModal, setShowRatingModal] = useState(false);
+  const [ratingSubmitted, setRatingSubmitted] = useState(false);
 
   const [cachedDriverLocation, setCachedDriverLocation] = useState<{
     latitude: number;
@@ -69,6 +72,40 @@ export default function OrderConfirmationScreen() {
     queryFn: () =>
       api.get<Order & { items: any[] }>(`/orders/${id}`).then((r) => r.data),
     enabled: !!id,
+  });
+
+  useEffect(() => {
+    if (!id || order?.status !== 'DELIVERED') return;
+    api
+      .get<{ reviewed: boolean }>(`/reviews/order/${id}/status`)
+      .then((r) => {
+        if (r.data.reviewed) setRatingSubmitted(true);
+      })
+      .catch(() => {});
+  }, [id, order?.status]);
+
+  useEffect(() => {
+    if (order?.status === 'DELIVERED' && !ratingSubmitted) {
+      const timer = setTimeout(() => setShowRatingModal(true), 1200);
+      return () => clearTimeout(timer);
+    }
+  }, [order?.status, ratingSubmitted]);
+
+  const { mutate: submitReview, isPending: isSubmittingReview } = useMutation({
+    mutationFn: (data: {
+      restaurantRating: number;
+      driverRating?: number;
+      comment?: string;
+    }) => api.post('/reviews', { orderId: id, ...data }),
+    onSuccess: () => {
+      setShowRatingModal(false);
+      setRatingSubmitted(true);
+      queryClient.invalidateQueries({ queryKey: ['restaurants'] });
+    },
+    onError: () => {
+      setShowRatingModal(false);
+      setRatingSubmitted(true);
+    },
   });
 
   const liveDriverLocation = useDriverLocationSocket(
@@ -293,6 +330,17 @@ export default function OrderConfirmationScreen() {
             <Text style={styles.homeButtonText}>Back to Home</Text>
           </Pressable>
         </View>
+
+        <RatingModal
+          visible={showRatingModal}
+          hasDriver={!!order?.driverId}
+          onSubmit={submitReview}
+          onDismiss={() => {
+            setShowRatingModal(false);
+            setRatingSubmitted(true);
+          }}
+          isSubmitting={isSubmittingReview}
+        />
       </ScrollView>
     </SafeAreaView>
   );

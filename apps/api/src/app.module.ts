@@ -11,6 +11,7 @@ import { PaymentsModule } from './payments/payments.module';
 import { GatewayModule } from './gateway/gateway.module';
 import { DriverModule } from './driver/driver.module';
 import { LocationModule } from './location/location.module';
+import { ReviewsModule } from './reviews/reviews.module';
 
 @Module({
   imports: [
@@ -24,6 +25,7 @@ import { LocationModule } from './location/location.module';
     GatewayModule,
     DriverModule,
     LocationModule,
+    ReviewsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

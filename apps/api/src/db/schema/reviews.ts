@@ -13,7 +13,8 @@ export const reviews = pgTable('reviews', {
     .references(() => restaurants.id),
   orderId: uuid('order_id')
     .notNull()
-    .references(() => orders.id),
+    .unique()
+    .references(() => orders.id, { onDelete: 'cascade' }),
   driverId: uuid('driver_id').references(() => users.id),
   restaurantRating: integer('restaurant_rating').notNull(),
   driverRating: integer('driver_rating'),

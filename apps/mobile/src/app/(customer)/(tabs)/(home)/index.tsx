@@ -75,7 +75,16 @@ export default function CustomerHomeScreen() {
                 <Text style={styles.cardName}>{item.name}</Text>
                 <Text style={styles.cardCuisine}>{item.cuisineType}</Text>
                 <View style={styles.cardMeta}>
-                  <Text style={styles.cardRating}>⭐ {item.rating}</Text>
+                  {Number(item.rating) > 0 ? (
+                    <View style={styles.ratingBadge}>
+                      <Text style={styles.ratingStar}>★</Text>
+                      <Text style={styles.ratingValue}>
+                        {Number(item.rating).toFixed(1)}
+                      </Text>
+                    </View>
+                  ) : (
+                    <Text style={styles.noRating}>New</Text>
+                  )}
                   <View style={styles.openBadge}>
                     <Text style={styles.openBadgeText}>Open</Text>
                   </View>
@@ -177,5 +186,24 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#16A34A',
     fontWeight: '600',
+  },
+  ratingBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  ratingStar: {
+    fontSize: 13,
+    color: '#FF6B35',
+  },
+  ratingValue: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#333',
+  },
+  noRating: {
+    fontSize: 13,
+    color: '#999',
+    fontStyle: 'italic',
   },
 });
