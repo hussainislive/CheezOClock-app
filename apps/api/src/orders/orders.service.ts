@@ -11,12 +11,14 @@ import * as schema from '../db/schema';
 import { OrderStatus, UserRole } from '@food-delivery/types';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { OrdersGateway } from '../gateway/orders.gateway';
+import { DriverService } from '../driver/driver.service';
 
 @Injectable()
 export class OrdersService {
   constructor(
     @Inject('DB') private db: NeonHttpDatabase<typeof schema>,
     private ordersGateway: OrdersGateway,
+    private driverService: DriverService,
   ) {}
 
   async create(customerId: string, dto: CreateOrderDto) {
@@ -166,6 +168,10 @@ export class OrdersService {
       .returning();
 
     this.ordersGateway.emitOrderUpdate(updated);
+
+    if (newStatus === 'READY') {
+      await this.driverService.assignDriver(orderId);
+    }
 
     return updated;
   }

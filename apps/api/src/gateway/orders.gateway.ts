@@ -43,6 +43,19 @@ export class OrdersGateway implements OnGatewayConnection, OnGatewayDisconnect {
     console.log(`Client ${client.id} joined restaurant:${restaurantId}`);
   }
 
+  @SubscribeMessage('join:driver')
+  handleJoinDriver(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() driverId: string,
+  ) {
+    client.join(`driver:${driverId}`);
+    console.log(`Client ${client.id} joined driver:${driverId}`);
+  }
+
+  emitDriverAssigned(driverId: string, order: Record<string, unknown>) {
+    this.server.to(`driver:${driverId}`).emit('driver:assigned', order);
+  }
+
   emitOrderUpdate(order: {
     id: string;
     restaurantId: string;
