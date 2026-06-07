@@ -12,10 +12,12 @@ import { GatewayModule } from './gateway/gateway.module';
 import { DriverModule } from './driver/driver.module';
 import { LocationModule } from './location/location.module';
 import { ReviewsModule } from './reviews/reviews.module';
+import { CacheModule } from './cache/cache.module';
 
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
+    CacheModule,
     DbModule,
     AuthModule,
     RestaurantsModule,
