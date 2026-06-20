@@ -1,8 +1,7 @@
 # Food Delivery — Full-Stack NestJS + React Native Course
 
-A full-stack food delivery application built from scratch with NestJS and Expo. This is the companion repository for the **CodeWithLari** YouTube course.
+A full-stack food delivery application built from scratch with NestJS and Expo. This Repo is cloned from laribright a bit refactored and pushed to my account as a seperate repo will do some custom stuff in codebase later
 
-📺 **[Watch the full course on YouTube →](https://youtube.com/@codewithlari)**
 
 ---
 
