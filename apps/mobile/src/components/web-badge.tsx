@@ -10,7 +10,7 @@ import { Spacing } from '@/constants/theme';
 
 export function WebBadge() {
   const scheme = useColorScheme();
-
+// web-badge.tsx file commit message
   return (
     <ThemedView style={styles.container}>
       <ThemedText
