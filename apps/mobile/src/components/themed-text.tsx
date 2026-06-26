@@ -47,7 +47,7 @@ const styles = StyleSheet.create({
   small: {
     fontSize: 14,
     lineHeight: 20,
-    fontWeight: 500,
+    fontWeight: 600,
   },
   smallBold: {
     fontSize: 14,
